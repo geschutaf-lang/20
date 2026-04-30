@@ -50,7 +50,7 @@ def get_top_n_by_marketcap(tickers, n=20, progress_bar=None):
     market_caps = {}
     total = len(tickers)
 
-    for i, tk in enumerate(tickers):
+    for i, tk in enumerate(tickers[:100]):
         if progress_bar is not None:
             progress_bar.progress(
                 (i + 1) / total,
