@@ -185,7 +185,7 @@ if st.button("🚀 전략 실행 및 결과 보기"):
             f"→ **이번 달은 전량 현금 보유하세요!**"
         )
 
-  st.subheader("🏆 모멘텀 순위표")
+    st.subheader("🏆 모멘텀 순위표")
 
     def color_momentum(val):
         if isinstance(val, (int, float)) and not np.isnan(val):
