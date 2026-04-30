@@ -1,4 +1,4 @@
-import streaml as st
+import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-st.set_page_config(page_tle="모멘텀 전략 웹앱", layout="wide")
+st.set_page_config(page_title="모멘텀 전략 웹앱", layout="wide")
 
 st.title("📈 S&P500 모멘텀 전략 자동 탐색")
 st.write("버튼을 누르면 실시간으로 데이터를 수집하여 이번 달 매수 종목을 계산합니다.")
@@ -33,8 +33,8 @@ def get_sp500_tickers():
     headers = {'User-Agent': 'Mozilla/5.0'}
     resp = requests.get(url, headers=headers, timeout=15)
     soup = BeautifulSoup(resp.text, 'html.parser')
-    table = soup.find('table', {'id': 'constuents'})
-    sp_rows = table.find_all('tr')[1:]  # ← 변수명을 sp_rows로 변경 (충돌 방지)
+    table = soup.find('table', {'id': 'constituents'})
+    sp_rows = table.find_all('tr')[1:] 
     tickers = [
         row.find_all('td')[0].text.strip().replace('.', '-')
         for row in sp_rows if row.find_all('td')
@@ -45,12 +45,11 @@ def get_sp500_tickers():
 def get_top_n_by_marketcap(tickers, n=20, progress_bar=None):
     """
     전체 S&P500 종목을 배치로 조회해 시총 상위 N개 반환
-    알파벳 순 목록 전체를 검사해야 정확한 TOP N이 나옴
     """
     market_caps = {}
     total = len(tickers)
 
-    for i, tk in enumerate(tickers[:20]):
+    for i, tk in enumerate(tickers):
         if progress_bar is not None:
             progress_bar.progress(
                 (i + 1) / total,
@@ -84,28 +83,28 @@ if st.button("🚀 전략 실행 및 결과 보기"):
     TIP_TICKER = 'TIP'
 
     # ── Step 1: S&P500 종목 목록 ─────────────────────────────
-    wh st.status("📋 S&P500 종목 목록 수집 중...") as status:
+    with st.status("📋 S&P500 종목 목록 수집 중...") as status:
         try:
             all_sp500 = get_sp500_tickers()
-            st.wre(f"✅ S&P500 구성 종목 {len(all_sp500)}개 확인")
+            st.write(f"✅ S&P500 구성 종목 {len(all_sp500)}개 확인")
         except Exception as e:
             st.error(f"종목 목록 수집 실패: {e}")
             st.stop()
 
         # ── Step 2: 시총 상위 20개 선별 ──────────────────────
-        st.wre("📊 시총 조회 중... (전체 종목 대상, 약 2~3분 소요)")
+        st.write("📊 시총 조회 중... (전체 종목 대상, 약 2~3분 소요)")
         prog = st.progress(0, text="시총 조회 준비 중...")
         try:
             top20, market_caps = get_top_n_by_marketcap(all_sp500, TOP_N, prog)
             prog.empty()
-            st.wre(f"✅ 시총 상위 {TOP_N}개 선별 완료: {', '.join(top20)}")
+            st.write(f"✅ 시총 상위 {TOP_N}개 선별 완료: {', '.join(top20)}")
         except Exception as e:
             prog.empty()
             st.error(f"시총 조회 실패: {e}")
             st.stop()
 
         # ── Step 3: 주가 데이터 수집 ─────────────────────────
-        st.wre("📡 주가 데이터 수집 중 (14개월)...")
+        st.write("📡 주가 데이터 수집 중 (14개월)...")
         try:
             end_date   = datetime.today()
             start_date = end_date - timedelta(days=430)
@@ -118,18 +117,21 @@ if st.button("🚀 전략 실행 및 결과 보기"):
             )
             # ✅ yfinance 멀티인덱스 안전 처리
             if isinstance(raw.columns, pd.MultiIndex):
-                prices = raw['Close']
+                if 'Close' in raw.columns.levels[0]:
+                    prices = raw['Close']
+                else:
+                    prices = raw.xs('Close', axis=1, level=1)
             else:
                 prices = raw[['Close']]
 
             monthly = prices.resample('ME').last()
-            st.wre(f"✅ {len(monthly)}개월치 주가 수집 완료")
+            st.write(f"✅ {len(monthly)}개월치 주가 수집 완료")
         except Exception as e:
             st.error(f"주가 데이터 수집 실패: {e}")
             st.stop()
 
         # ── Step 4: 모멘텀 계산 ───────────────────────────────
-        st.wre("🧮 모멘텀 계산 중...")
+        st.write("🧮 모멘텀 계산 중...")
 
         # TIP 필터 판정
         tip_avg, tip_r1, tip_r3, tip_r6, tip_r12 = avg_momentum(monthly[TIP_TICKER])
